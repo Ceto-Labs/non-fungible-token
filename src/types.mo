@@ -1,5 +1,15 @@
 import Result "mo:base/Result";
+import Nat32 "mo:base/Nat32";
+
 module {
+    // two formats ,for exampl (10000 as serial number)
+    // first only serial numbers exist: 10000  
+    // second serial numbers and index numbers, 10000:12
+    public let INVALID_INDEX : Nat32 = 0xFFFFFFFF;
+    public type NFTID = {
+        seq : Text;
+        index : Nat32;
+    };
     public type ContractMetadata = {
         name : Text;
         symbol : Text;
@@ -21,14 +31,14 @@ module {
     };
 
     public type TransferRequest = {
-        to : Principal;
-        id : Text;
+        to : [Principal];
+        id : [Text];
     };
 
     public type AuthorizeRequest = {
-        id : Text;
-        user : Principal;
-        isAuthorized : Bool;
+        id : [Text];
+        user : [Principal];
+        isAuthorized : [Bool];
     };
 
     public type UpdateOwnersRequest = {
@@ -46,6 +56,7 @@ module {
     public type UpdateOwnersResult = Result.Result<(), Error>;
     public type PropertyQueryResult = Result.Result<?Property, Error>;
     public type NftResult = Result.Result<PublicNft, Error>;
+    public type NftsResult = Result.Result<[PublicNft], Error>;
     public type OwnerOfResult = Result.Result<Principal, Error>;
 
     public type Chunk = {data : Blob; nextPage : ?Nat; totalPages : Nat};
@@ -61,7 +72,7 @@ module {
     };
 
     public type NftEgg = {
-        payload : {#Payload : [Nat8]; #StagedData};
+        payload : {#Payload : [[Nat8]]; #StagedData};
         contentType : Text;
         owner : ?Principal;
         properties : ?Property;
