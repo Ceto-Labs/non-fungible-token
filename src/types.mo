@@ -1,15 +1,11 @@
 import Result "mo:base/Result";
 import Nat32 "mo:base/Nat32";
+import Char "mo:base/Char";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
 
 module {
-    // two formats ,for exampl (10000 as serial number)
-    // first only serial numbers exist: 10000  
-    // second serial numbers and index numbers, 10000:12
-    public let INVALID_INDEX : Nat32 = 0xFFFFFFFF;
-    public type NFTID = {
-        seq : Text;
-        index : Nat32;
-    };
+
     public type ContractMetadata = {
         name : Text;
         symbol : Text;
@@ -55,8 +51,7 @@ module {
     public type AuthorizeResult = Result.Result<(), Error>;
     public type UpdateOwnersResult = Result.Result<(), Error>;
     public type PropertyQueryResult = Result.Result<?Property, Error>;
-    public type NftResult = Result.Result<PublicNft, Error>;
-    public type NftsResult = Result.Result<[PublicNft], Error>;
+    public type NftResult = Result.Result<[PublicNft], Error>;
     public type OwnerOfResult = Result.Result<Principal, Error>;
 
     public type Chunk = {data : Blob; nextPage : ?Nat; totalPages : Nat};
@@ -178,5 +173,56 @@ module {
     public type UpdatePropertyRequest = {
         id : Text;
         updateQuery : [UpdateQuery];
+    };
+
+
+    // two formats ,for exampl (10000 as serial number)
+    // first only serial numbers exist: 10000  
+    // second serial numbers and index numbers, 10000:12
+    public let INVALID_INDEX : Nat32 = 0xFFFFFFFF;
+    public type NFTID = {
+        seq : Text;
+        index : Nat32;
+    };
+    public func textToNat( txt : Text) : Nat {
+        assert(txt.size() > 0);
+        let chars = txt.chars();
+
+        var num : Nat = 0;
+        for (v in chars){
+            let charToNum = Nat32.toNat(Char.toNat32(v)-48);
+            assert(charToNum >= 0 and charToNum <= 9);
+            num := num * 10 +  charToNum;          
+        };
+
+        num;
+    };
+
+    public func NFTIDToText(id : NFTID) : Text {
+        if (id.index == INVALID_INDEX){
+            id.seq;
+        } else {
+            Text.concat(Text.concat(id.seq, ":"), Nat32.toText(id.index));
+        };
+    };
+
+
+    public func TextToNFTID(id : Text) : (NFTID) {
+        let pattern = #char ':';
+       
+        if (Text.contains(id, pattern)){
+            let its = Iter.toArray(Text.split(id, pattern));
+            assert(its.size() == 2);
+            
+            {
+                seq = its[0];
+                index = Nat32.fromNat(textToNat(its[1]));
+            };
+        } else {
+            {
+                seq = id;
+                index = INVALID_INDEX;
+            };
+        };
     };
 }

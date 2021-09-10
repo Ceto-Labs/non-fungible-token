@@ -18,7 +18,6 @@ import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Trie "mo:base/TrieSet";
 import Nat32 "mo:base/Nat32";
-import Char "mo:base/Char";
 
 // Support multiple assets
 // Support copyright tax
@@ -38,7 +37,7 @@ shared({ caller = hub }) actor class Nft() = this {
     stable var seq : Nat = 0;
     stable var payloadSize : Nat = 0;
 
-    //Record an ID corresponding to one or more NFTs, Text as a key is nftid
+    //Record an seq corresponding to one or more NFTs, Text as a key is nftid
     stable var nftEntries : [(Text, [NftTypes.Nft])] = [];
     let nfts = HashMap.fromIter<Text, [NftTypes.Nft]>(nftEntries.vals(), 10, Text.equal, Text.hash);
 
@@ -90,7 +89,7 @@ shared({ caller = hub }) actor class Nft() = this {
         INITALIZED := true;
     };
 
-    public shared({caller = caller}) func getMetadata() : async NftTypes.ContractMetadata {
+    public func getMetadata() : async NftTypes.ContractMetadata {
         return CONTRACT_METADATA;
     };
 
@@ -103,7 +102,7 @@ shared({ caller = hub }) actor class Nft() = this {
         return (nfts.size(), totalSize);
     };
 
-    public shared ({caller = caller}) func mint(egg : NftTypes.NftEgg) : async Text {
+    public shared ({caller = caller}) func mint(egg : NftTypes.NftEgg) : async [Text] {
         assert _isOwner(caller);
         return await _mint(caller, egg)
     };
@@ -240,9 +239,11 @@ shared({ caller = hub }) actor class Nft() = this {
         };
     };
 
-     public shared({caller = caller}) func tokensByID(id : Text) : async NftTypes.NftsResult {
+    //id is composed of serial number and index. If only the serial number is given, all NFTs are returned; 
+    //if the serial number and index are given, only the corresponding nft is returned.
+    public shared({caller = caller}) func tokensByID(id : Text) : async NftTypes.NftResult {
         var publicNfts : [NftTypes.PublicNft] = [];
-        let nftID = TextToNFTID(id);
+        let nftID = NftTypes.TextToNFTID(id);
 
         switch(nfts.get(nftID.seq)) {
             case null return #err(#NotFound);
@@ -278,7 +279,7 @@ shared({ caller = hub }) actor class Nft() = this {
                     for (k in Array.keys<NftTypes.Nft>(arrValues)) {
                         let v = arrValues[k];
                         //let tmpNftID : NftTypes.NFTID = ;
-                        let tmpID = NFTIDToText({
+                        let tmpID = NftTypes.NFTIDToText({
                             seq = nftID.seq;
                             index = Nat32.fromNat(k);
                         });
@@ -313,81 +314,81 @@ shared({ caller = hub }) actor class Nft() = this {
         #ok(publicNfts);
     };
 
-    public query ({caller = caller}) func tokensByIDInsecure(id : Text) : async NftTypes.NftsResult {
-        var publicNfts : [NftTypes.PublicNft] = [];
-        let nftID = TextToNFTID(id);
+    // public query ({caller = caller}) func tokensByIDInsecure(id : Text) : async NftTypes.NftResult {
+    //     var publicNfts : [NftTypes.PublicNft] = [];
+    //     let nftID = NftTypes.TextToNFTID(id);
 
-        switch(nfts.get(nftID.seq)) {
-            case null return #err(#NotFound);
-            case (?arrValues) {
-                if (nftID.index != NftTypes.INVALID_INDEX) {
-                    assert(arrValues.size() > Nat32.toNat(nftID.index));
-                    let v = arrValues[Nat32.toNat(nftID.index)];
+    //     switch(nfts.get(nftID.seq)) {
+    //         case null return #err(#NotFound);
+    //         case (?arrValues) {
+    //             if (nftID.index != NftTypes.INVALID_INDEX) {
+    //                 assert(arrValues.size() > Nat32.toNat(nftID.index));
+    //                 let v = arrValues[Nat32.toNat(nftID.index)];
 
-                    if (v.isPrivate) {
-                        switch(_isAuthorized(caller, id)) {
-                            case (#err(v)) {
-                                if (not _isOwner(caller)) return #err(v);
-                            };
-                            case _ {};
-                        };
-                    };
-                    var payloadResult : NftTypes.PayloadResult = #Complete(v.payload[0]);
+    //                 if (v.isPrivate) {
+    //                     switch(_isAuthorized(caller, id)) {
+    //                         case (#err(v)) {
+    //                             if (not _isOwner(caller)) return #err(v);
+    //                         };
+    //                         case _ {};
+    //                     };
+    //                 };
+    //                 var payloadResult : NftTypes.PayloadResult = #Complete(v.payload[0]);
 
-                    if (v.payload.size() > 1) {
-                        payloadResult := #Chunk({data = v.payload[0]; totalPages = v.payload.size(); nextPage = ?1});
-                    };
+    //                 if (v.payload.size() > 1) {
+    //                     payloadResult := #Chunk({data = v.payload[0]; totalPages = v.payload.size(); nextPage = ?1});
+    //                 };
 
-                    publicNfts := Array.append(publicNfts,[{
-                        contentType = v.contentType;
-                        createdAt = v.createdAt;
-                        id = id;
-                        owner = _ownerOf(id);
-                        payload = payloadResult;
-                        properties = v.properties;
-                    }]);     
+    //                 publicNfts := Array.append(publicNfts,[{
+    //                     contentType = v.contentType;
+    //                     createdAt = v.createdAt;
+    //                     id = id;
+    //                     owner = _ownerOf(id);
+    //                     payload = payloadResult;
+    //                     properties = v.properties;
+    //                 }]);     
         
-                } else {
-                    for (k in Array.keys<NftTypes.Nft>(arrValues)) {
-                        let v = arrValues[k];
-                        //let tmpNftID : NftTypes.NFTID = ;
-                        let tmpID = NFTIDToText({
-                            seq = nftID.seq;
-                            index = Nat32.fromNat(k);
-                        });
-                        if (v.isPrivate) {
-                            switch(_isAuthorized(caller, tmpID)) {
-                                case (#err(v)) {
-                                    if (not _isOwner(caller)) return #err(v);
-                                };
-                                case _ {};
-                            };
-                        };
+    //             } else {
+    //                 for (k in Array.keys<NftTypes.Nft>(arrValues)) {
+    //                     let v = arrValues[k];
+    //                     //let tmpNftID : NftTypes.NFTID = ;
+    //                     let tmpID = NftTypes.NFTIDToText({
+    //                         seq = nftID.seq;
+    //                         index = Nat32.fromNat(k);
+    //                     });
+    //                     if (v.isPrivate) {
+    //                         switch(_isAuthorized(caller, tmpID)) {
+    //                             case (#err(v)) {
+    //                                 if (not _isOwner(caller)) return #err(v);
+    //                             };
+    //                             case _ {};
+    //                         };
+    //                     };
 
-                        var payloadResult : NftTypes.PayloadResult = #Complete(v.payload[0]);
+    //                     var payloadResult : NftTypes.PayloadResult = #Complete(v.payload[0]);
 
-                        if (v.payload.size() > 1) {
-                            payloadResult := #Chunk({data = v.payload[0]; totalPages = v.payload.size(); nextPage = ?1});
-                        };
+    //                     if (v.payload.size() > 1) {
+    //                         payloadResult := #Chunk({data = v.payload[0]; totalPages = v.payload.size(); nextPage = ?1});
+    //                     };
 
-                        publicNfts := Array.append(publicNfts,[{
-                            contentType = v.contentType;
-                            createdAt = v.createdAt;
-                            id = tmpID;
-                            owner = _ownerOf(tmpID);
-                            payload = payloadResult;
-                            properties = v.properties;
-                        }]);                        
-                    };   
-                };                            
-            };
-        };
+    //                     publicNfts := Array.append(publicNfts,[{
+    //                         contentType = v.contentType;
+    //                         createdAt = v.createdAt;
+    //                         id = tmpID;
+    //                         owner = _ownerOf(tmpID);
+    //                         payload = payloadResult;
+    //                         properties = v.properties;
+    //                     }]);                        
+    //                 };   
+    //             };                            
+    //         };
+    //     };
 
-        #ok(publicNfts);
-    };
+    //     #ok(publicNfts);
+    // };
     
     public shared ({caller = caller}) func tokenChunkByID(id : Text, page : Nat) : async NftTypes.ChunkResult {
-        let nftID = TextToNFTID(id);
+        let nftID = NftTypes.TextToNFTID(id);
         assert(nftID.index != NftTypes.INVALID_INDEX);
 
         switch (nfts.get(nftID.seq)) {
@@ -425,7 +426,7 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     public query ({caller = caller}) func tokenChunkByIDInsecure(id : Text, page : Nat) : async NftTypes.ChunkResult {
-        let nftID = TextToNFTID(id);
+        let nftID = NftTypes.TextToNFTID(id);
         assert(nftID.index != NftTypes.INVALID_INDEX);
         switch (nfts.get(nftID.seq)) {
             case null return #err(#NotFound);
@@ -525,7 +526,7 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     public query ({caller = caller}) func queryProperties(propertyQuery : NftTypes.PropertyQueryRequest) : async NftTypes.PropertyQueryResult {
-        let nftID = TextToNFTID(propertyQuery.id);
+        let nftID = NftTypes.TextToNFTID(propertyQuery.id);
         assert(nftID.index != NftTypes.INVALID_INDEX);
         switch(propertyQuery.mode) {
             case (#All) {
@@ -556,7 +557,7 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     private func _handleQueries(caller : Principal, nftID : NftTypes.NFTID, query0 : NftTypes.PropertyQuery) : NftTypes.PropertyQueryResult {
-        let id = NFTIDToText(nftID);
+        let id = NftTypes.NFTIDToText(nftID);
         switch(nfts.get(nftID.seq)) {
             case (null) return #err(#NotFound);
             case (?values) {
@@ -639,15 +640,15 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     // mint a new Token, the number of tokens may be one or more
-    private func _mint(caller : Principal, egg : NftTypes.NftEgg) : async Text {
+    private func _mint(caller : Principal, egg : NftTypes.NftEgg) : async [Text] {
         let thisId = Nat.toText(seq);
         var size = 0;
         var tmpNfts : [NftTypes.Nft] = [];
         var tempPayload : [Blob] = [];
- 
+        var newIDs :[Text] = [];
+    
         switch (egg.payload) {
             case (#Payload(v)) {
-               
                 for (value in v.vals()) {
                    tmpNfts := Array.append<NftTypes.Nft>(tmpNfts, [{
                         contentType = egg.contentType;
@@ -662,7 +663,6 @@ shared({ caller = hub }) actor class Nft() = this {
                 nfts.put(thisId, tmpNfts);
             };
             case (#StagedData) {
-               
                 switch(stagedNftData.get(caller)){
                     case (?value){
                        tempPayload := Array.append<Blob>(tempPayload, value.toArray());
@@ -698,18 +698,25 @@ shared({ caller = hub }) actor class Nft() = this {
             case (null) {};
             case (?v) {
                 owner := v;
-           };
+            };
         };
-
+      
         // Add the newly minted egg to the NTFs of `owner`.
         if (tmpNfts.size() > 0){
             for (k in Array.keys<NftTypes.Nft>(tmpNfts)){
-                var id : Text = NFTIDToText({seq=thisId; index = Nat32.fromNat(k)});
+                var id : Text = NftTypes.NFTIDToText({seq=thisId; index = Nat32.fromNat(k)});
+                switch(ownerToNft.get(owner)){
+                    case (null) {};
+                    case (?v){};
+                };
+
+                newIDs := Array.append<Text>(newIDs, [id]);
                 MapHelper.add<Principal, Text>(ownerToNft, owner, id, MapHelper.textEqual(id));
                 nftToOwner.put(id, owner);
             };
         } else {
-            var id : Text = NFTIDToText({seq=thisId; index = Nat32.fromNat(0)});
+            var id : Text = NftTypes.NFTIDToText({seq=thisId; index = Nat32.fromNat(0)});
+            newIDs := Array.append<Text>(newIDs, [id]);
             MapHelper.add<Principal, Text>(ownerToNft, owner, id, MapHelper.textEqual(id));
             nftToOwner.put(thisId, owner);
         };
@@ -720,8 +727,7 @@ shared({ caller = hub }) actor class Nft() = this {
             topupAmount = TOPUP_AMOUNT;
             topupCallback = wallet_receive;
         });
-
-        return thisId;
+        return newIDs;
     };
 
     private func _contractInfo() : NftTypes.ContractInfo {
@@ -768,17 +774,19 @@ shared({ caller = hub }) actor class Nft() = this {
         contractOwners := Array.filter<Principal>(contractOwners, func(v) {v != p});
     };
 
-
     // Check auth
     // Update owners
     // Remove existing auths
     private func _transfer(caller : Principal, transferRequest : NftTypes.TransferRequest) : async NftTypes.TransferResult {
         assert(transferRequest.id.size() == transferRequest.to.size());
-        var tokenOwner = Principal.fromActor(this);
+        var self = Principal.fromActor(this);
+        var tokenOwner = self;
+
         for (key in Array.keys<Text>(transferRequest.id)){
             let id = transferRequest.id[key];
+            let nftID = NftTypes.TextToNFTID(id);
             let to = transferRequest.to[key];
-            switch(nfts.get(id)) {
+            switch(nfts.get(nftID.seq)) {
                 case null {
                     // todo add to log
                     assert(false)
@@ -786,9 +794,10 @@ shared({ caller = hub }) actor class Nft() = this {
                 case (?v) {}; // Nft Exists
             };
 
-            switch (nftToOwner.get(id)) {
-                case null { };
+            switch (nftToOwner.get(id)) {             
+                case null { Debug.print(debug_show("null ", id));};
                 case (?realOwner) {
+                    Debug.print(debug_show("not null",id, realOwner));
                     tokenOwner := realOwner;
                     if (tokenOwner == to) {
                         // todo add to log
@@ -797,7 +806,7 @@ shared({ caller = hub }) actor class Nft() = this {
                 }
             };
 
-            let isOwnedContractAndCallerOwner = tokenOwner == Principal.fromActor(this) and _isOwner(caller);
+            let isOwnedContractAndCallerOwner = tokenOwner == self and _isOwner(caller);
             
             if (caller != tokenOwner and not isOwnedContractAndCallerOwner) {
                 switch(authorized.get(id)) {
@@ -813,6 +822,7 @@ shared({ caller = hub }) actor class Nft() = this {
                     };
                 };
             };
+
 
             // Add the transfered NFT to the NTFs of the recipient.
             MapHelper.add<Principal, Text>(ownerToNft, to, id, MapHelper.textEqual(id));
@@ -835,17 +845,26 @@ shared({ caller = hub }) actor class Nft() = this {
 
     private func _authorize(caller : Principal, r : NftTypes.AuthorizeRequest) : async NftTypes.AuthorizeResult {
         assert(r.id.size() == r.isAuthorized.size() and r.isAuthorized.size() == r.user.size());
+
         for( k in Array.keys<Text>(r.id)){
             let id = r.id[k];
             let isAuthorized = r.isAuthorized[k];
             let user = r.user[k];
+
+            switch(_isAuthorized(caller, id)) {
+                case (#err(v)) { //todo err to log 
+                    Debug.print(debug_show("isAuthorized ret err", v, caller, id));
+                    assert(false);
+                };
+                case (_) {} // Ok;
+            };
 
             switch(isAuthorized) {
                 case (true) {
                     switch(MapHelper.addIfNotLimit<Text, Principal>(authorized, id, user, AUTHORIZED_LIMIT, MapHelper.principalEqual(user))) {
                         case true {};
                         case false { 
-                            //todo err to loag 
+                            //todo err to log 
                             assert(false);
                         }; //return #err(#AuthorizedPrincipalLimitReached(AUTHORIZED_LIMIT))};
                     };
@@ -854,12 +873,7 @@ shared({ caller = hub }) actor class Nft() = this {
                     MapHelper.filter<Text, Principal>(authorized, id, user, func (v : Principal) {v != user});
                 };
             };
-        
-            switch(_isAuthorized(caller, id)) {
-                case (#err(v)) { assert(false);};//return #err(v)};
-                case (_) {} // Ok;
-            };
-
+    
             ignore _emitEvent({
                 createdAt = Time.now();
                 event = #NftEvent(#Authorize({id = id; user = user; isAuthorized = isAuthorized}));
@@ -895,7 +909,9 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     private func _isAuthorized(caller : Principal, id : Text) : Result.Result<(), NftTypes.Error> {
-        switch (nfts.get(id)) {
+        let nftID = NftTypes.TextToNFTID(id);
+        Debug.print(debug_show("seq:", nftID.seq, "index:", nftID.index));
+        switch (nfts.get(nftID.seq)) {
             case null return #err(#NotFound);
             case _ {};
         };
@@ -992,7 +1008,7 @@ shared({ caller = hub }) actor class Nft() = this {
 
     private func _handleNft(id : Text) : Http.Response {
         Debug.print("Here c");
-        let nftID = TextToNFTID(id);
+        let nftID = NftTypes.TextToNFTID(id);
         switch(nfts.get(nftID.seq)) {
             case null return NOT_FOUND;
             case (?values) {
@@ -1029,7 +1045,7 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     public query func http_request_streaming_callback(token : Http.StreamingCallbackToken) : async Http.StreamingCallbackResponse {
-        let nftID = TextToNFTID(token.key);
+        let nftID = NftTypes.TextToNFTID(token.key);
         switch(nfts.get(nftID.seq)) {
             case null return {body = Blob.fromArray([]); token = null};
             case (?values) {
@@ -1059,44 +1075,5 @@ shared({ caller = hub }) actor class Nft() = this {
             sha256 = null;
             key = id;
         });
-    };
-
-    private func NFTIDToText(id : NftTypes.NFTID) : Text {
-        if (id.index == NftTypes.INVALID_INDEX){
-            id.seq;
-        } else {
-            Text.concat(Text.concat(id.seq, ":"), Nat32.toText(id.index));
-        };
-    };
-
-    private func textToNat( txt : Text) : Nat {
-        let chars = txt.chars();
-        assert(txt.size() > 0);
-
-        var num : Nat = 0;
-        for (v in chars){
-           num := num * 10 +  Nat32.toNat(Char.toNat32(v));
-        };
-
-        num;
-    };
-
-    private func TextToNFTID(id : Text) : (NftTypes.NFTID) {
-        let pattern = #char ':';
-       
-        if (Text.contains(id, pattern)){
-            let its = Iter.toArray(Text.split(id, pattern));
-            assert(its.size() == 2);
-            
-            {
-                seq = its[0];
-                index = Nat32.fromNat(textToNat(its[1]));
-            };
-        } else {
-            {
-                seq = id;
-                index = NftTypes.INVALID_INDEX;
-            };
-        };
     };
 }
