@@ -4,10 +4,39 @@ import Debug "mo:base/Debug";
 import Principal "mo:base/Principal";
 import Array "mo:base/Array";
 import Result "mo:base/Result";
+import Cycles "mo:base/ExperimentalCycles";
 
 actor nftTest {
 
     //let actorNft : ?actor {} = null;
+
+    public shared(msg) func eventCallback(msg : NftTypes.EventMessage): async (){
+        switch(msg.event){
+            case (#ContractEvent(cEvent)){
+                switch(cEvent){
+                    case (#ContractAuthorize(v)){
+                        Debug.print(debug_show("ContractAuthorize event", msg.createdAt, msg.topupAmount, "v:", v.isAuthorized, v.user));
+                    };
+                    case (#Mint(v)){
+                        Debug.print(debug_show("Mint event", msg.createdAt, msg.topupAmount, "v:", v.id, v.owner));
+                    };
+                };
+            };
+            case (#NftEvent(nEvent)){
+                switch(nEvent){
+                    case (#Transfer(v)){
+                        Debug.print(debug_show("Transfer event", msg.createdAt, msg.topupAmount, "v:", v.from, v.id, v.to));
+                    };
+                    case (#Authorize(v)){
+                        Debug.print(debug_show("Authorize event", msg.createdAt, msg.topupAmount, "v:", v.id, v.isAuthorized, v.user));
+                    };
+                };
+            };
+        };
+
+        //Cycles.add(msg.topupAmount);
+        await msg.topupCallback();
+    };
 
     public func run() : async (){
         let actorNft = await nft.Nft();
@@ -18,7 +47,8 @@ actor nftTest {
             symbol = "init";
         });
 
-        let metaData =  await actorNft.getMetadata();
+        // set event call back
+        await actorNft.setEventCallback(eventCallback);
 
         // create 
         let payloads :[[Nat8]] = [[1,2,3],[0,0,0],[5,5,5,5]];
@@ -115,20 +145,18 @@ actor nftTest {
             };  
         };
 
-        // OOPS! You've triggered a compiler bug.
-        // let retNfts = await actorNft.tokensByID("0");
-        // switch (retNfts){
-        //     case (#ok(nfts)){
-        //         Debug.print(debug_show(nfts));
-        //         //assert(nfts.size() == payloads.size());
-        //     };
-        //     case (#err(e)){
-        //         assert(false);
-        //     };
-        // };
+        // query
+        let retNfts = await actorNft.tokensByID("0");
+        switch (retNfts){
+            case (#ok(nfts)){
+                Debug.print(debug_show(nfts));
+                assert(nfts.size() == payloads.size());
+            };
+            case (#err(e)){
+                assert(false);
+            };
+        };
 
-
-        // event
 
         // burn
 
