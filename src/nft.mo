@@ -575,25 +575,28 @@ shared({ caller = hub }) actor class Nft() = this {
         let thisId = Nat.toText(seq);
         var size = 0;
         var tmpNfts : [NftTypes.Nft] = [];
-        var tempPayload : [Blob] = [];
         var newIDs :[Text] = [];
+        var i : Nat32 = 0;
+        let createAt = Time.now();
     
         switch (egg.payload) {
             case (#Payload(v)) {
-                for (value in v.vals()) {
-                   tmpNfts := Array.append<NftTypes.Nft>(tmpNfts, [{
+                while (i < egg.number) {
+                    i += 1;
+                    tmpNfts := Array.append<NftTypes.Nft>(tmpNfts, [{
                         contentType = egg.contentType;
-                        createdAt = Time.now();
-                        payload = [Blob.fromArray(value)];
+                        createdAt = createAt;
+                        payload = [Blob.fromArray(v)];
                         properties = egg.properties;
                         isPrivate = egg.isPrivate;
                     }]);
-                    size += value.size();
+                    size += v.size();
                 };
 
                 nfts.put(thisId, tmpNfts);
             };
             case (#StagedData) {
+                var tempPayload : [Blob] = [];
                 switch(stagedNftData.get(caller)){
                     case (?value){
                        tempPayload := Array.append<Blob>(tempPayload, value.toArray());
@@ -606,7 +609,7 @@ shared({ caller = hub }) actor class Nft() = this {
 
                 nfts.put(thisId, [{
                     contentType = egg.contentType;
-                    createdAt = Time.now();
+                    createdAt = createAt;
                     payload = tempPayload;
                     properties = egg.properties;
                     isPrivate = egg.isPrivate;
@@ -620,9 +623,7 @@ shared({ caller = hub }) actor class Nft() = this {
         };
 
         payloadSize := payloadSize + size;
-
         seq := seq + 1;
-
         var owner = Principal.fromActor(this);
 
         switch (egg.owner) {
@@ -888,7 +889,6 @@ shared({ caller = hub }) actor class Nft() = this {
             failedCallsLimit = BROKER_FAILED_CALL_LIMIT;
         };
     };
-
 
     private func _burn(caller : Principal, id : Text) : (NftTypes.BurnResult){
      

@@ -9,6 +9,7 @@ import Blob "mo:base/Blob";
 import Nat8 "mo:base/Nat8";
 import Nat "mo:base/Nat";
 import Error "mo:base/Error";
+import Nat32 "mo:base/Nat32";
 
 actor nftTest {
 
@@ -55,21 +56,22 @@ actor nftTest {
         await actorNft.setEventCallback(eventCallback);
 
         // create 
-        let payloads :[[Nat8]] = [[1,2,3],[0,0,0],[5,5,5,5]];
+        let payload :[Nat8] = [1,2,3,0,0,0,5,5];
         let proper :NftTypes.Property = {name = "first gif"; value=#Int(0); immutable=true};
         let egg : NftTypes.NftEgg = {
-            payload = #Payload(payloads);
+            payload = #Payload(payload);
             contentType = "GIF";
             owner = ?self;
             properties = ?proper;
             isPrivate = false;
+            number = 10;
         };
 
         let mintIDs = await actorNft.mint(egg);
 
         let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
 
-        assert(totalMinted == 1 and totalNfts == payloads.size());
+        assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.number));
         Debug.print(debug_show("new total nfts:",totalNfts, "IDs:", mintIDs));
 
         let balances0 = await actorNft.balanceOf(self);
@@ -93,7 +95,7 @@ actor nftTest {
 
         let authorTo = Principal.fromText("w3c4p-nfokg-flxoh-5agcl-jkhew-t3vlj-xd2j3-ryx7y-mak4p-xlt6g-6ae");
         let authorReq : NftTypes.AuthorizeRequest = {
-            id = balances0;
+            id = [balances0[0], balances0[1],balances0[2]];
             user = [authorTo, authorTo, authorTo];
             isAuthorized = [true,true,true];
         };
@@ -104,7 +106,8 @@ actor nftTest {
             case (#ok()){};
             case (#err(v)){assert(false)};
         };
-        for (i in Array.keys<Text>(balances0)){
+
+        for (i in Array.keys<Text>(authorReq.id)){
             let auths = await actorNft.getAuthorized(balances0[i]);
             assert(auths[0] == authorTo);
         };
@@ -153,10 +156,10 @@ actor nftTest {
         let retNfts = await actorNft.tokensByID("0");
         switch (retNfts){
             case (#ok(nfts)){
-  
-                assert(nfts.size() == payloads.size());
-                for(i in Array.keys<[Nat8]>(payloads)){
-                    let payload = payloads[i];
+                var i  = 0;
+                assert(nfts.size() == Nat32.toNat(egg.number));
+                while(i < Nat32.toNat(egg.number)){
+                    
                     let retPayload = switch(nfts[i].payload){
                         case (#Complete(v)){v;};
                         case (#Chunk(v)){
@@ -164,10 +167,12 @@ actor nftTest {
                             v.data;
                         };
                     };
-                    
+                    Debug.print(debug_show("nft data:",retPayload));
                     assert(Array.equal<Nat8>(payload, Blob.toArray(retPayload), func(a : Nat8, b : Nat8): Bool{
                         return Nat8.equal(a, b);
                     }));
+
+                    i += 1;
                 };
             };
             case (#err(e)){
@@ -181,7 +186,6 @@ actor nftTest {
                 case (#ok(nfts)){
                     assert(nfts.size() == 1);
                     
-                    let payload = payloads[0];
                     let retPayload = switch(nfts[0].payload){
                         case (#Complete(v)){v;};
                         case (#Chunk(v)){
@@ -202,8 +206,8 @@ actor nftTest {
         };
 
         // Properties
-        
-       
+
+     
         // burn
         do {
             let retBurn = await actorNft.burn(balances0[2]);
@@ -227,8 +231,13 @@ actor nftTest {
             };
         };
 
-        let leftNft = await actorNft.balanceOf(self);
-        assert(leftNft.size() == 0);
+        do{
+            let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
+            Debug.print(debug_show("lasted:",totalMinted, totalNfts));
+            assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.number-1));
+            let leftNft = await actorNft.balanceOf(self);
+            assert(Nat.add(leftNft.size(), 1) == Nat.sub(Nat32.toNat(egg.number), trsq.to.size()));
+        };
 
         // http
 

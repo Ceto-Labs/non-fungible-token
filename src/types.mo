@@ -68,11 +68,12 @@ module {
     };
 
     public type NftEgg = {
-        payload : {#Payload : [[Nat8]]; #StagedData};
+        payload : {#Payload : [Nat8]; #StagedData};
         contentType : Text;
         owner : ?Principal;
         properties : ?Property;
         isPrivate : Bool;
+        number : Nat32;
     };
 
     public type PublicNft = {
