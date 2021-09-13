@@ -5,6 +5,10 @@ import Principal "mo:base/Principal";
 import Array "mo:base/Array";
 import Result "mo:base/Result";
 import Cycles "mo:base/ExperimentalCycles";
+import Blob "mo:base/Blob";
+import Nat8 "mo:base/Nat8";
+import Nat "mo:base/Nat";
+import Error "mo:base/Error";
 
 actor nftTest {
 
@@ -22,7 +26,7 @@ actor nftTest {
                     };
                 };
             };
-            case (#NftEvent(nEvent)){
+            case (#NftEvent(nEvent)){                
                 switch(nEvent){
                     case (#Transfer(v)){
                         Debug.print(debug_show("Transfer event", msg.createdAt, msg.topupAmount, "v:", v.from, v.id, v.to));
@@ -109,8 +113,8 @@ actor nftTest {
         let to = Principal.fromText("tz2ss-56jvu-blwni-m5mmc-lj445-rl34w-c7klz-eidog-fc4ak-yoqlt-lae");
 
         let trsq : NftTypes.TransferRequest = {
-            to = [to, to, to];
-            id = balances0;
+            to = [to, to];
+            id = [balances0[0], balances0[1]];
         };
         let trsRet = await actorNft.transfer(trsq);
         switch(trsRet){
@@ -149,16 +153,82 @@ actor nftTest {
         let retNfts = await actorNft.tokensByID("0");
         switch (retNfts){
             case (#ok(nfts)){
-                Debug.print(debug_show(nfts));
+  
                 assert(nfts.size() == payloads.size());
+                for(i in Array.keys<[Nat8]>(payloads)){
+                    let payload = payloads[i];
+                    let retPayload = switch(nfts[i].payload){
+                        case (#Complete(v)){v;};
+                        case (#Chunk(v)){
+                            // to do check all data
+                            v.data;
+                        };
+                    };
+                    
+                    assert(Array.equal<Nat8>(payload, Blob.toArray(retPayload), func(a : Nat8, b : Nat8): Bool{
+                        return Nat8.equal(a, b);
+                    }));
+                };
             };
             case (#err(e)){
                 assert(false);
             };
         };
 
+        do{
+            let retNfts = await actorNft.tokensByID(balances0[0]);
+            switch (retNfts){
+                case (#ok(nfts)){
+                    assert(nfts.size() == 1);
+                    
+                    let payload = payloads[0];
+                    let retPayload = switch(nfts[0].payload){
+                        case (#Complete(v)){v;};
+                        case (#Chunk(v)){
+                            // to do check all data
+                            v.data;
+                        };
+                    };
+                    
+                    assert(Array.equal<Nat8>(payload, Blob.toArray(retPayload), func(a : Nat8, b : Nat8): Bool{
+                        return Nat8.equal(a, b);
+                    }));
+                    
+                };
+                case (#err(e)){
+                    assert(false);
+                };
+            };
+        };
 
+        // Properties
+        
+       
         // burn
+        do {
+            let retBurn = await actorNft.burn(balances0[2]);
+            switch(retBurn){
+                case (#ok){};
+                case (#err(v)){
+                    assert(false);
+                };
+            };
+        };
+
+        do{
+            try{
+                let retBurn = await actorNft.burn(balances0[0]);
+                switch(retBurn){
+                    case (#ok){ assert(false);};
+                    case (#err(v)){ };
+                };
+            } catch (e){
+                Debug.print(debug_show("should burn exception", Error.message(e)));
+            };
+        };
+
+        let leftNft = await actorNft.balanceOf(self);
+        assert(leftNft.size() == 0);
 
         // http
 

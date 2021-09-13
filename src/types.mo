@@ -53,6 +53,7 @@ module {
     public type PropertyQueryResult = Result.Result<?Property, Error>;
     public type NftResult = Result.Result<[PublicNft], Error>;
     public type OwnerOfResult = Result.Result<Principal, Error>;
+    public type BurnResult = Result.Result<(), Error>;
 
     public type Chunk = {data : Blob; nextPage : ?Nat; totalPages : Nat};
 
