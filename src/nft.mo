@@ -1033,15 +1033,29 @@ shared({ caller = hub }) actor class Nft() = this {
         Debug.print("Here b");
         let (payload, token) = _streamContent(id, 0, data);
 
-        return {
-            status_code = 200;
-            headers = [("Content-Type", contentType)];
-            body = payload;
-            streaming_strategy = ? #Callback({
-                token = Option.unwrap(token);
-                callback = http_request_streaming_callback;
-            });
+       switch(token){
+            case (?value){
+                 return {
+                    status_code = 200;
+                    headers = [("Content-Type", contentType)];
+                    body = payload;
+                    streaming_strategy = ? #Callback({
+
+                        token = value;
+                        callback = http_request_streaming_callback;
+                    });
+                };
+            };
+            case (_){
+                return {
+                    status_code = 200;
+                    headers = [("Content-Type", contentType)];
+                    body = payload;
+                    streaming_strategy = null;
+                };
+            };
         };
+       
     };
 
     public query func http_request_streaming_callback(token : Http.StreamingCallbackToken) : async Http.StreamingCallbackResponse {
