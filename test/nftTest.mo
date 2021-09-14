@@ -13,8 +13,6 @@ import Nat32 "mo:base/Nat32";
 
 actor nftTest {
 
-    //let actorNft : ?actor {} = null;
-
     public shared(msg) func eventCallback(msg : NftTypes.EventMessage): async (){
         switch(msg.event){
             case (#ContractEvent(cEvent)){
@@ -72,10 +70,8 @@ actor nftTest {
         let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
 
         assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.amount));
-        Debug.print(debug_show("new total nfts:",totalNfts, "IDs:", mintIDs));
 
         let balances0 = await actorNft.balanceOf(self);
-
         for (i in Array.keys<Text>(balances0)){
             let retOwner = await actorNft.ownerOf(balances0[i]);
             switch (retOwner){
@@ -90,6 +86,7 @@ actor nftTest {
 
             assert(mintIDs[i] == balances0[i]);
             let auths = await actorNft.getAuthorized(balances0[i]);
+            assert(auths == []);
             Debug.print(debug_show("auths :",auths));
         };
 
@@ -153,8 +150,7 @@ actor nftTest {
         };
 
         // query
-        let retNfts = await actorNft.tokenByID("0");
-        switch (retNfts){
+        switch (await actorNft.tokenByID("0")){
             case (#ok(nfts)){
                 assert(false);
             };
@@ -164,8 +160,7 @@ actor nftTest {
         };
 
         do{
-            let retNft = await actorNft.tokenByID(balances0[0]);
-            switch (retNft){
+            switch (await actorNft.tokenByID(balances0[0])){
                 case (#ok(nft)){                    
                     let retPayload = switch(nft.payload){
                         case (#Complete(v)){v;};
@@ -214,10 +209,9 @@ actor nftTest {
 
         do{
             let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
-            Debug.print(debug_show("lasted:",totalMinted, totalNfts));
             assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.amount-1));
             let leftNft = await actorNft.balanceOf(self);
-            assert(Nat.add(leftNft.size(), 1) == Nat.sub(Nat32.toNat(egg.amount), trsq.to.size()));
+            assert(Nat32.toNat(egg.amount) == Nat.add(leftNft.size(), 1) + trsq.to.size());
         };
 
         // http
