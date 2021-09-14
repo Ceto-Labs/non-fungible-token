@@ -87,7 +87,6 @@ actor nftTest {
             assert(mintIDs[i] == balances0[i]);
             let auths = await actorNft.getAuthorized(balances0[i]);
             assert(auths == []);
-            Debug.print(debug_show("auths :",auths));
         };
 
         let authorTo = Principal.fromText("w3c4p-nfokg-flxoh-5agcl-jkhew-t3vlj-xd2j3-ryx7y-mak4p-xlt6g-6ae");
@@ -216,7 +215,7 @@ actor nftTest {
 
         // http
 
-        Debug.print(debug_show("contract info:\n", await actorNft.getContractInfoInsecure()));
+        Debug.print(debug_show("contract info:\n", await actorNft.getContractInfo()));
         Debug.print("passed !!!")
     };    
 

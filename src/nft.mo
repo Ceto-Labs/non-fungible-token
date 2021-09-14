@@ -93,7 +93,6 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     public shared ({caller = caller}) func mint(egg : NftTypes.NftEgg) : async [Text] {
-        assert _isOwner(caller);
         return await _mint(caller, egg)
     };
 
@@ -352,37 +351,6 @@ shared({ caller = hub }) actor class Nft() = this {
                 }
             };
         };
-    };
-
-    // Insecure Functions
-    public shared query func balanceOfInsecure(p : Principal) : async [Text] {
-        return _balanceOf(p)
-    };
-
-    public shared query func ownerOfInsecure(id : Text) : async NftTypes.OwnerOfResult {
-        switch(nftToOwner.get(id)) {
-            case (null) return #err(#NotFound);
-            case (?v) return #ok(v);
-        };
-    };
-
-    public shared query func isAuthorizedInsecure(id : Text, user : Principal) : async Bool {
-        switch (_isAuthorized(user, id)) {
-            case (#ok()) return true;
-            case (_) return false;
-        };
-    };
-
-    public query func getAuthorizedInsecure(id : Text) : async [Principal] {
-        switch (authorized.get(id)) {
-            case (?v) return v;
-            case _ return [];
-        };
-    };
-
-    public query ({caller = caller}) func getContractInfoInsecure() : async NftTypes.ContractInfo {
-        assert _isOwner(caller);
-        return _contractInfo();
     };
 
     public query ({caller = caller}) func queryProperties(propertyQuery : NftTypes.PropertyQueryRequest) : async NftTypes.PropertyQueryResult {
