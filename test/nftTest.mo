@@ -64,14 +64,14 @@ actor nftTest {
             owner = ?self;
             properties = ?proper;
             isPrivate = false;
-            number = 10;
+            amount = 10;
         };
 
         let mintIDs = await actorNft.mint(egg);
 
         let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
 
-        assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.number));
+        assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.amount));
         Debug.print(debug_show("new total nfts:",totalNfts, "IDs:", mintIDs));
 
         let balances0 = await actorNft.balanceOf(self);
@@ -153,40 +153,21 @@ actor nftTest {
         };
 
         // query
-        let retNfts = await actorNft.tokensByID("0");
+        let retNfts = await actorNft.tokenByID("0");
         switch (retNfts){
             case (#ok(nfts)){
-                var i  = 0;
-                assert(nfts.size() == Nat32.toNat(egg.number));
-                while(i < Nat32.toNat(egg.number)){
-                    
-                    let retPayload = switch(nfts[i].payload){
-                        case (#Complete(v)){v;};
-                        case (#Chunk(v)){
-                            // to do check all data
-                            v.data;
-                        };
-                    };
-                    Debug.print(debug_show("nft data:",retPayload));
-                    assert(Array.equal<Nat8>(payload, Blob.toArray(retPayload), func(a : Nat8, b : Nat8): Bool{
-                        return Nat8.equal(a, b);
-                    }));
-
-                    i += 1;
-                };
+                assert(false);
             };
             case (#err(e)){
-                assert(false);
+                Debug.print(debug_show("test  incomplete id", e));
             };
         };
 
         do{
-            let retNfts = await actorNft.tokensByID(balances0[0]);
-            switch (retNfts){
-                case (#ok(nfts)){
-                    assert(nfts.size() == 1);
-                    
-                    let retPayload = switch(nfts[0].payload){
+            let retNft = await actorNft.tokenByID(balances0[0]);
+            switch (retNft){
+                case (#ok(nft)){                    
+                    let retPayload = switch(nft.payload){
                         case (#Complete(v)){v;};
                         case (#Chunk(v)){
                             // to do check all data
@@ -234,9 +215,9 @@ actor nftTest {
         do{
             let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
             Debug.print(debug_show("lasted:",totalMinted, totalNfts));
-            assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.number-1));
+            assert(totalMinted == 1 and totalNfts == Nat32.toNat(egg.amount-1));
             let leftNft = await actorNft.balanceOf(self);
-            assert(Nat.add(leftNft.size(), 1) == Nat.sub(Nat32.toNat(egg.number), trsq.to.size()));
+            assert(Nat.add(leftNft.size(), 1) == Nat.sub(Nat32.toNat(egg.amount), trsq.to.size()));
         };
 
         // http

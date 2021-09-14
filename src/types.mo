@@ -51,7 +51,7 @@ module {
     public type AuthorizeResult = Result.Result<(), Error>;
     public type UpdateOwnersResult = Result.Result<(), Error>;
     public type PropertyQueryResult = Result.Result<?Property, Error>;
-    public type NftResult = Result.Result<[PublicNft], Error>;
+    public type NftResult = Result.Result<PublicNft, Error>;
     public type OwnerOfResult = Result.Result<Principal, Error>;
     public type BurnResult = Result.Result<(), Error>;
 
@@ -65,6 +65,7 @@ module {
         createdAt: Int;
         properties : ?Property;
         isPrivate : Bool;
+        amount : Nat32;
     };
 
     public type NftEgg = {
@@ -73,7 +74,7 @@ module {
         owner : ?Principal;
         properties : ?Property;
         isPrivate : Bool;
-        number : Nat32;
+        amount : Nat32;
     };
 
     public type PublicNft = {
@@ -210,6 +211,7 @@ module {
 
 
     public func TextToNFTID(id : Text) : (NFTID) {
+        assert(id.size() != 0);
         let pattern = #char ':';
        
         if (Text.contains(id, pattern)){
