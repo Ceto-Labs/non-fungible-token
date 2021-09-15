@@ -33,6 +33,9 @@ actor nftTest {
                     case (#Authorize(v)){
                         Debug.print(debug_show("Authorize event", msg.createdAt, msg.topupAmount, "v:", v.id, v.isAuthorized, v.user));
                     };
+                    case (#Burn(v)){
+                        Debug.print(debug_show("Burn event", msg.createdAt, msg.topupAmount, "v:", v.id, v.owner));
+                    };
                 };
             };
         };
@@ -43,6 +46,7 @@ actor nftTest {
 
     public func run() : async (){
         let actorNft = await nft.Nft();
+        Debug.print(debug_show("nft id:",  Principal.fromActor(actorNft)));
 
         let self = Principal.fromActor(nftTest);
         await actorNft.init([self], {
@@ -53,12 +57,12 @@ actor nftTest {
         // set event call back
         await actorNft.setEventCallback(eventCallback);
 
-        // create 
-        let payload :[Nat8] = [1,2,3,0,0,0,5,5];
-        let proper :NftTypes.Property = {name = "first gif"; value=#Int(0); immutable=true};
+        // create  helloworld
+        let payload :[Nat8] = [0x68,0x65,0x6c,0x6c,0x6f,0x20,0x77,0x6f,0x72,0x6c,0x64];
+        let proper :NftTypes.Property = {name = "text"; value=#Int(0); immutable=true};
         let egg : NftTypes.NftEgg = {
             payload = #Payload(payload);
-            contentType = "GIF";
+            contentType = "txt text/plain";
             owner = ?self;
             properties = ?proper;
             isPrivate = false;
@@ -154,7 +158,7 @@ actor nftTest {
                 assert(false);
             };
             case (#err(e)){
-                Debug.print(debug_show("test  incomplete id", e));
+                //Debug.print(debug_show("test  incomplete id", e));
             };
         };
 
@@ -202,7 +206,7 @@ actor nftTest {
                     case (#err(v)){ };
                 };
             } catch (e){
-                Debug.print(debug_show("should burn exception", Error.message(e)));
+                //Debug.print(debug_show("should burn exception", Error.message(e)));
             };
         };
 

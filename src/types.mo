@@ -89,6 +89,7 @@ module {
     public type NftEvent = {
         #Transfer : {id : Text; from : Principal; to : Principal};
         #Authorize : {id : Text; user : Principal; isAuthorized: Bool};
+        #Burn : {id : Text; owner : Principal};
     };
 
     public type ContractEvent = {

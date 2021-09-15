@@ -48,7 +48,6 @@ shared({ caller = hub }) actor class Nft() = this {
     stable var nftToOwnerEntries : [(Text, Principal)] = [];
     let nftToOwner = HashMap.fromIter<Text, Principal>(nftToOwnerEntries.vals(), 15, Text.equal, Text.hash);
 
-    //
     stable var ownerToNftEntries : [(Principal, [Text])] = [];
     let ownerToNft = HashMap.fromIter<Principal, [Text]>(ownerToNftEntries.vals(), 15, Principal.equal, Principal.hash);
 
@@ -61,10 +60,10 @@ shared({ caller = hub }) actor class Nft() = this {
     stable var messageBrokerCallsSinceLastTopup : Nat = 0;
     stable var messageBrokerFailedCalls : Nat = 0;
 
-    //private var usersTokens = HashMap.HashMap<Principal, UserTokens>(1, Principal.equal, Principal.hash);
     var stagedNftData = HashMap.HashMap<Principal , Buffer.Buffer<Blob>>(1, Principal.equal, Principal.hash);
     var stagedAssetData = Buffer.Buffer<Blob>(0);
-
+    
+    //--------------------------------------------------------func-------------------------------------------------------
     system func preupgrade() {
         nftEntries := Iter.toArray(nfts.entries());
         staticAssetsEntries := Iter.toArray(staticAssets.entries());
@@ -97,7 +96,7 @@ shared({ caller = hub }) actor class Nft() = this {
     };
 
     public shared({caller = caller}) func burn(id : Text) : async (NftTypes.BurnResult){
-        return _burn(caller, id);
+        return await _burn(caller, id);
     };
 
     public func balanceOf(p : Principal) : async [Text] {
@@ -530,10 +529,6 @@ shared({ caller = hub }) actor class Nft() = this {
         while (k < Nat32.toNat(egg.amount)){
             k += 1;
             var id : Text = NftTypes.NFTIDToText({seq=thisId; index = Nat32.fromNat(k)});
-            switch(ownerToNft.get(owner)){
-                case (null) {};
-                case (?v){};
-            };
 
             newIDs := Array.append<Text>(newIDs, [id]);
             MapHelper.add<Principal, Text>(ownerToNft, owner, id, MapHelper.textEqual(id));
@@ -776,7 +771,7 @@ shared({ caller = hub }) actor class Nft() = this {
         };
     };
 
-    private func _burn(caller : Principal, id : Text) : (NftTypes.BurnResult){
+    private func _burn(caller : Principal, id : Text) : async (NftTypes.BurnResult){
         let nftID = NftTypes.TextToNFTID(id);
         assert(nftID.index != NftTypes.INVALID_INDEX);
 
@@ -824,10 +819,17 @@ shared({ caller = hub }) actor class Nft() = this {
                 } else {
                     nfts.delete(nftID.seq);
                 };
-
-                #ok();
             };
         };
+
+        ignore _emitEvent({
+            createdAt = Time.now();
+            event = #NftEvent(#Burn({owner = caller;id = id}));
+            topupAmount = TOPUP_AMOUNT;
+            topupCallback = wallet_receive;
+        });
+
+        return #ok();
     };
 
     // Http Interface
