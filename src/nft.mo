@@ -444,10 +444,9 @@ shared({ caller = hub }) actor class Nft() = this {
 
     // cycle func
     public shared(msg) func wallet_receive() : async () {
-      
-        let amount = Cycles.available();
-        let accepted = Cycles.accept(amount);
-        assert (accepted == amount);
+        messageBrokerCallsSinceLastTopup = 0;
+
+        ignore ExperimentalCycles.accept(ExperimentalCycles.available());
     };
 
     public shared ({caller = caller})func cycle() : async Nat{
