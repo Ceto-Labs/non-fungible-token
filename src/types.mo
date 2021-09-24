@@ -6,6 +6,10 @@ import Iter "mo:base/Iter";
 
 module {
 
+    public type Token = {
+        id : Text;
+        amount : Nat;
+    };
     public type ContractMetadata = {
         name : Text;
         symbol : Text;
@@ -27,15 +31,19 @@ module {
     };
 
     public type TransferRequest = {
-        to : [Principal];
+        from : Principal;
+        to : Principal;
         id : [Text];
+        amount : [Nat];
     };
 
     public type AuthorizeRequest = {
-        id : [Text];
-        user : [Principal];
-        isAuthorized : [Bool];
+        amount : Nat;
+        id : Text;
+        user : Principal;
     };
+
+    public type AuthorizeInfo = AuthorizeRequest;
 
     public type UpdateOwnersRequest = {
         user : Principal;
@@ -52,7 +60,7 @@ module {
     public type UpdateOwnersResult = Result.Result<(), Error>;
     public type PropertyQueryResult = Result.Result<?Property, Error>;
     public type NftResult = Result.Result<PublicNft, Error>;
-    public type OwnerOfResult = Result.Result<Principal, Error>;
+    public type OwnerOfResult = Result.Result<[Principal], Error>;
     public type BurnResult = Result.Result<(), Error>;
 
     public type Chunk = {data : Blob; nextPage : ?Nat; totalPages : Nat};
@@ -65,7 +73,7 @@ module {
         createdAt: Int;
         properties : ?Property;
         isPrivate : Bool;
-        amount : Nat32;
+        amount : Nat;
     };
 
     public type NftEgg = {
@@ -74,22 +82,24 @@ module {
         owner : ?Principal;
         properties : ?Property;
         isPrivate : Bool;
-        amount : Nat32;
+        amount : Nat;
+        //mutable : Bool;
     };
 
     public type PublicNft = {
         id : Text;
         payload : PayloadResult;
         contentType : Text;
-        owner : Principal;
+        owners : [Principal];
         createdAt: Int;
         properties : ?Property;
+        amount : Nat;
     };
 
     public type NftEvent = {
-        #Transfer : {id : Text; from : Principal; to : Principal};
-        #Authorize : {id : Text; user : Principal; isAuthorized: Bool};
-        #Burn : {id : Text; owner : Principal};
+        #Transfer : {id : Text; from : Principal; to : Principal; amount : Nat};
+        #Authorize : {id : Text; user : Principal; amount: Nat; owner : Principal};
+        #Burn : {id : Text; owner : Principal; amount : Nat};
     };
 
     public type ContractEvent = {
@@ -177,57 +187,5 @@ module {
     public type UpdatePropertyRequest = {
         id : Text;
         updateQuery : [UpdateQuery];
-    };
-
-
-    // two formats ,for exampl (10000 as serial number)
-    // first only serial numbers exist: 10000  
-    // second serial numbers and index numbers, 10000:12
-    public let INVALID_INDEX : Nat32 = 0xFFFFFFFF;
-    public type NFTID = {
-        seq : Text;
-        index : Nat32;
-    };
-    public func textToNat( txt : Text) : Nat {
-        assert(txt.size() > 0);
-        let chars = txt.chars();
-
-        var num : Nat = 0;
-        for (v in chars){
-            let charToNum = Nat32.toNat(Char.toNat32(v)-48);
-            assert(charToNum >= 0 and charToNum <= 9);
-            num := num * 10 +  charToNum;          
-        };
-
-        num;
-    };
-
-    public func NFTIDToText(id : NFTID) : Text {
-        if (id.index == INVALID_INDEX){
-            id.seq;
-        } else {
-            Text.concat(Text.concat(id.seq, ":"), Nat32.toText(id.index));
-        };
-    };
-
-
-    public func TextToNFTID(id : Text) : (NFTID) {
-        assert(id.size() != 0);
-        let pattern = #char ':';
-       
-        if (Text.contains(id, pattern)){
-            let its = Iter.toArray(Text.split(id, pattern));
-            assert(its.size() == 2);
-            
-            {
-                seq = its[0];
-                index = Nat32.fromNat(textToNat(its[1]));
-            };
-        } else {
-            {
-                seq = id;
-                index = INVALID_INDEX;
-            };
-        };
     };
 }
