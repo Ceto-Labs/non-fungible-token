@@ -14,29 +14,34 @@ Notes:
 
 # Standard interfaces 
 ```
-//Returns the total number of NFT types and the total number of NFTs
-getTotalMinted() -> async (Nat, Nat);
-
-//Mint new type of NFT,the number of new NFTs can be one or more
-mint(egg : NftTypes.NftEgg) -> async [Text];
-
-//Destroy NFT
-burn(id : Text) : async NftTypes.BurnResult;
+//Exchange interface 
+//the amount of single NFT
+supply(id : Text) -> async (Nat);
 
 //Query all NFTs owned by an address
-balanceOf(p : Principal) : async [Text];
+balanceOf(p : Principal, id : Text) -> async Nat;
 
 //Batch authorization to agents
-authorize(authorizeRequest : NftTypes.AuthorizeRequest) : async NftTypes.AuthorizeResult;
+authorize(authorizeRequest : NftTypes.AuthorizeRequest) -> async NftTypes.AuthorizeResult;
 
-//Batch transfer NFT
-transfer(transferRequest : NftTypes.TransferRequest) : async NftTypes.TransferResult;
+//Batch transferFrom NFT
+transferFrom(transferRequest : NftTypes.TransferRequest) -> async NftTypes.TransferResult;
+
+//Query all authorization information of the owner of nft
+getAuthorized(owner : Principal, id : Text) : async [NftTypes.AuthorizeInfo];
+
+// Data interface
+//mint erc1155 standard type NFT
+//return Nft ID
+mint(egg : NftTypes.NftEgg) -> async Text;
 
 //Get NFT raw data
-tokenByID(id : Text) : async NftTypes.NftResult;
+nft(id : Text) -> async NftTypes.NftResult;
 
-//Query whether NFT is authorized to the agent
-isAuthorized(id : Text, user : Principal) : async Bool;
+//Destroy NFT
+burn(id : Text, amount : Nat) -> async NftTypes.BurnResult;
+
+
 ```
 # Features
 

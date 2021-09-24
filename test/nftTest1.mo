@@ -32,7 +32,8 @@ actor class nftTest1() = this {
 
         let mintID = await actorNft.mint(egg);
 
-        let (totalMinted, totalNfts) = await actorNft.getTotalMinted();
+        let totalMinted = await actorNft.supplyNft();
+        let totalNfts = await actorNft.supply(mintID);
         assert(totalMinted == 1 and totalNfts == egg.amount);
 
         let balance = await actorNft.balanceOf(self, mintID);

@@ -110,13 +110,13 @@ shared({ caller = hub }) actor class Nft() = this {
 
     // mutil token standard
 
-    // Returns the number of categories and the total number of NFTs
-    public query func getTotalMinted() : async (Nat, Nat) {
-        var totalSize : Nat = 0;
+    public query func supply(id : Text) : async (Nat) {
         for ((k, v) in nfts.entries()){
-            totalSize  += v.amount;
+            if (k == id){
+                return v.amount;
+            };
         };
-        return (nfts.size(), totalSize);
+        return 0;
     };
 
     public shared ({caller = caller}) func mint(egg : NftTypes.NftEgg) : async Text {
@@ -139,7 +139,7 @@ shared({ caller = hub }) actor class Nft() = this {
         return await _authorize(caller, authorizeRequest);
     };
 
-    public shared({caller = caller}) func tokenByID(id : Text) : async NftTypes.NftResult {
+    public shared({caller = caller}) func nft(id : Text) : async NftTypes.NftResult {
 
         switch(nfts.get(id)) {
             case null return #err(#NotFound);
@@ -171,6 +171,14 @@ shared({ caller = hub }) actor class Nft() = this {
         };
     };
  
+    public shared func getAuthorized(owner : Principal, id : Text) : async [NftTypes.AuthorizeInfo] {
+        return Auth.getAuthorized(authorized, owner, id);
+    };
+
+    // public interface
+    public query func supplyNft() : async (Nat) {
+        return nfts.size();
+    };
     public shared({caller = caller}) func isAuthorized(id : Text, user : Principal) : async Bool {
         switch (_isAuthorized(caller, user, id)) {
             case (#ok()) return true;
@@ -178,7 +186,6 @@ shared({ caller = hub }) actor class Nft() = this {
         };
     };
 
-    // public interface
     public shared({caller = caller}) func init(owners : [Principal], metadata : NftTypes.ContractMetadata) : async () {
         assert not INITALIZED and caller == hub;
         contractOwners := Array.append(contractOwners, owners);
@@ -293,10 +300,6 @@ shared({ caller = hub }) actor class Nft() = this {
         });
 
         return #ok();
-    };
-
-    public shared func getAuthorized(owner : Principal, id : Text) : async [NftTypes.AuthorizeInfo] {
-        return Auth.getAuthorized(authorized, owner, id);
     };
     
     public shared ({caller = caller}) func tokenChunkByID(id : Text, page : Nat) : async NftTypes.ChunkResult {
